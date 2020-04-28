@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -13,9 +14,12 @@ import com.asus.robotframework.API.RobotCallback;
 import com.asus.robotframework.API.RobotCmdState;
 import com.asus.robotframework.API.RobotErrorCode;
 import com.asus.robotframework.API.RobotFace;
+import com.asus.robotframework.API.results.RoomInfo;
 import com.robot.asus.robotactivity.RobotActivity;
 
 import org.json.JSONObject;
+
+import java.util.ArrayList;
 
 public class MainActivity extends RobotActivity {
     // request code for READ_CONTACTS. It can be any number > 0.
@@ -110,6 +114,46 @@ public class MainActivity extends RobotActivity {
 
             }
         });
+
+        mButtonGetRoomInfo = (Button) findViewById(R.id.button_getRoomInfo);
+        mButtonGetRoomInfo.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+
+                    //3. use robotAPI to get all room info:
+                    ArrayList<RoomInfo> arrayListRooms = robotAPI.contacts.room.getAllRoomInfo();
+
+                    sFirstRoom = arrayListRooms.get(0).keyword;
+                    Log.d("ZenboGoToLocation", "arrayListRooms = " + arrayListRooms);
+                    Log.d("ZenboGoToLocation", "arrayListRooms(0) = " + sFirstRoom);
+                    mTextViewFirstRoomKeyword.setText(sFirstRoom);
+                    mButtonGoTo.setEnabled(true);
+
+                }
+                catch (Exception e){
+                    Log.d("ZenboGoToLocation", "get room info result exception = "+ e);
+                }
+
+            }
+        });
+
+        mButtonGoTo = (Button) findViewById(R.id.button_goTo);
+        mButtonGoTo.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                if (!sFirstRoom.equals("")) {
+
+                    if (isRobotApiInitialed) {
+                        // use robotAPI to go to the position "keyword":
+                        robotAPI.motion.goTo(sFirstRoom);
+                    }
+
+                }
+
+            }
+        });
     }
 
     public MainActivity() {
@@ -119,7 +163,28 @@ public class MainActivity extends RobotActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // robotAPI.robot.speak("Hello world. I am Zenbo. Nice to meet you.");
+
+        // check permission READ_CONTACTS is granted or not
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_CONTACTS)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Permission is not granted by user yet
+            Log.d("ZenboGoToLocation", "READ_CONTACTS permission is not granted by user yet");
+            mTextViewPermissionStatus.setText(getString(R.string.permission_not_granted));
+            mButtonGrantPermission.setEnabled(true);
+            mButtonGetRoomInfo.setEnabled(false);
+        }
+        else{
+            // permission is granted by user
+            Log.d("ZenboGoToLocation", "READ_CONTACTS permission is granted");
+            mTextViewPermissionStatus.setText(getString(R.string.permission_granted));
+            mButtonGrantPermission.setEnabled(false);
+            mButtonGetRoomInfo.setEnabled(true);
+        }
+
+        // initial params
+        mTextViewFirstRoomKeyword.setText(getString(R.string.first_room_info));
+        mButtonGoTo.setEnabled(false);
+        sFirstRoom="";
     }
 
     private void requestPermission() {
